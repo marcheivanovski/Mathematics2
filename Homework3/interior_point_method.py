@@ -1,6 +1,7 @@
 from matplotlib.pyplot import axes
 import numpy as np
 import sympy 
+from scipy.optimize import linprog
 
 
 A_correct = A = np.array([
@@ -132,7 +133,7 @@ def interior_point_method(c, A, b):
         return
     '''
 
-    delta = 1/4.65
+    delta = 1/4.65 #delta = 1/4.65
     while True:
         mu = (1-delta)*mu
         h, k, f = iterative_improvement(Aprime, bprime, s, x, mu)
@@ -219,27 +220,9 @@ def interior_point_method(c, A, b):
 
         print("Cost of all these items is:", np.dot(c.T, optimal_x)[0][0])
         print("Daily needs (CH,PR,FT,EN):\n", np.dot(A_correct, optimal_x[:8, :]).T)
-    
-
-def matej_bread():
-    c = np.transpose(np.array([[10.0, 22.0, 15.0, 45.0, 40.0, 20.0, 87.0, 21.0]]))
-    A = np.array([
-        [-18.0, -48.0,-5.0,-1.0,-5.0,-0.0,-0.0,-8.0], 
-        [-2.0, -11.0, -3.0, -1.0, -3.0, -0.0, -15.0,-1.0], 
-        [-0.0,-6.0,-3.0,-10.0,-3.0,-100.0,-30.0,-1.0], 
-        [-77.0,-270.0,-60.0,-140.0,-61.0,-880.0,-330.0,-32.0], 
-        [18.0, 48.0,5.0,1.0,5.0,0.0,0.0,8.0], 
-        [2.0, 11.0, 3.0, 1.0, 3.0, 0.0, 15.0,1.0], 
-        [0.0,6.0,3.0,10.0,3.0,100.0,30.0,1.0], 
-        [77.0,270.0,60.0,140.0,61.0,880.0,330.0,32.0]])
 
 
-    b = np.transpose([[-250.0, -50.0, -50.0, -2200.0, 370.0, 170.0, 90.0, 2400.0]])
-    orA = len(A)
-    c = np.concatenate((c, np.zeros((len(A), 1))), axis = 0)
-    A = np.concatenate((A, np.identity(len(A))), axis = 1)
-
-def bread():
+def bread_my_method():
     c = np.transpose(np.array([[10.0, 22.0, 15.0, 45.0, 40.0, 20.0, 87.0, 21.0]]))
     A = np.array([
         [-18.0,  -48.0, -5.0, -1.0, -5.0, -0.0, -0.0, -8.0],  
@@ -256,7 +239,6 @@ def bread():
     c = np.concatenate((c, np.zeros((len(A), 1))), axis = 0)
     A = np.concatenate((A, np.identity(len(A))), axis = 1)
 
-
     U = max(np.abs(b).max(), np.abs(A).max(), np.abs(c).max())
     reducer = 10 ** (len(str(int(U))) - 1)
 
@@ -268,12 +250,10 @@ def bread():
     else:
         interior_point_method(c, A, b)
 
-
-def bread2():
-    c = np.transpose(np.array([[10.0, 22.0, 15.0, 45.0, 40.0, 20.0, 87.0, 21.0]]))
-
-    A = np.array([
-        [-18.0, -48.0, -5.0, -1.0, -5.0, -0.0, -0.0, -8.0],  
+def bread_commercial():
+    c = [10.0, 22.0, 15.0, 45.0, 40.0, 20.0, 87.0, 21.0]
+    A_ub = np.array([
+        [-18.0,  -48.0, -5.0, -1.0, -5.0, -0.0, -0.0, -8.0],  
         [-2.0,  -11.0,  -3.0,  -1.0,  -3.0,  -0.0,  -15.0, -1.0],  
         [-0.0, -6.0, -3.0, -10.0, -3.0, -100.0, -30.0, -1.0],  
         [-77.0, -270.0, -60.0, -140.0, -61.0, -880.0, -330.0, -32.0],  
@@ -282,27 +262,15 @@ def bread2():
         [0.0, 6.0, 3.0, 10.0, 3.0, 100.0, 30.0, 1.0],  
         [77.0, 270.0, 60.0, 140.0, 61.0, 880.0, 330.0, 32.0]
     ])
+    b_ub = [-250.0, -50.0, -50.0, -2200.0, 370.0, 170.0, 90.0, 2400.0]
 
-    #b = np.transpose([[250.0, 50.0, 50.0, 2200.0]])
-    #interior_point_method(c, A, b)
-    
-    b_final = np.transpose([[-250.0, -50.0, -50.0, -2200.0, 370.0, 170.0, 90.0, 2400.0]])
-    #b_max = np.transpose([[370.0, 170.0, 90.0, 5000.0]])
-    #b_min = -1*np.transpose([[250.0, 50.0, 50.0, 2200.0]])
-    
-    #A_left = np.vstack((-1*A, A))
-    A_final = np.concatenate( (A, np.eye(A.shape[0])), axis=1 )
+    res = linprog(c, A_ub=A_ub, b_ub=b_ub)
+    print(res)
 
-    #b_final = np.vstack((b_min, b_max))
-    c_final = np.vstack((c, np.zeros((A_final.shape[0],1))))
 
-    interior_point_method(c_final, A_final, b_final)
-    
-    #print(b)
-
-    
-    #print(x, s, y)
-
-bread()
+if __name__=='__main__':
+    bread_my_method()
+    print("-----------------")
+    bread_commercial()
 
         
