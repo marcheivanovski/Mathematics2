@@ -72,69 +72,9 @@ def minimize(fun, initial_point, delta=0.1, max_iterations=10000, tolerance=1e-8
     return vertices[0]
 
 
-def minimize2(fun, initial, delta=0.1, alpha=1, gamma=2, rho=0.5, sigma=0.5, tolerance=1e-8, max_iterations=500):
-	"""this function minimizes a given function fun
-	Args:
-		fun (function): The function that need to be minimized
-		initial: Initial guess for the function parameters
-	"""
-	
-	# initialize all vertices
-	vertices = [initial]
-	
-	for i in range(len(initial)):
-		vertices.append(initial[:i] + (initial[i] + delta,) + initial[i + 1:])
-
-	iteration = 0
-	
-	while True:
-		# (1) order
-		vertices.sort(key = lambda p: fun(*p))
-
-		if fun(*vertices[-1]) - fun(*vertices[0]) < tolerance or iteration >= max_iterations:
-			return vertices[0]
-
-		iteration += 1
-		
-		# (2) calculate centroid
-		centroid = tuple([sum(p) / len(p) for p in zip(*vertices[:-1])])
-		
-		# (3) reflection
-		reflected = tuple([c + alpha * (c - w) for c, w in zip(centroid, vertices[-1])])
-	
-		# test if reflected point is better than the second worst, but not better than the best
-		if fun(*vertices[-2]) > fun(*reflected) > fun(*vertices[0]):
-			vertices[-1] = reflected
-		else:
-			# test if reflected point is the best point so far
-			if fun(*reflected) < fun(*vertices[0]):
-				expanded = tuple([c + gamma * (r - c) for c, r in zip(centroid, reflected)])
-	
-				# test if the expanded point is better than the reflected point
-				if fun(*expanded) < fun(*reflected):
-					vertices[-1] = expanded
-				else:
-					vertices[-1] = reflected
-			else:
-				
-				# (4) contraction
-				contracted = tuple([c + rho * (w - c) for c, w in zip(centroid, vertices[-1])])
-	
-				# test if the contracted point is better than the worst point
-				if fun(*contracted) < fun(*vertices[-1]):
-					vertices[-1] = contracted
-				else:
-					# (6) shrink
-					vertices = [vertices[0]] + [tuple([b + sigma * (p - b) for b, p in zip(v, vertices[0])]) for v in vertices[1:]]
-	
-def rosenbrock2(x, y):
-	return 100 * math.pow(y - math.pow(x, 2), 2) + math.pow(1 - x, 2)
-
-
 def rosenbrock(X):
     x, y = X[0], X[1]
     return 100 * math.pow(y - math.pow(x, 2), 2) + math.pow(1 - x, 2)
 
 if __name__ == "__main__":
     print(minimize(rosenbrock, (100, 100)))
-    #print(minimize2(rosenbrock2, (100, 100)))

@@ -8,6 +8,8 @@ from scipy.optimize import linprog
 def set_weights():
     np.random.seed(42)
     w = np.random.uniform(1,2,840)
+
+    #The added external edges get weight 0
     for i in range(20):
         w[i]=0
 
@@ -24,7 +26,7 @@ def set_weights():
 
 def relaxMaximalWeightMatching2(output=False):
     w = set_weights()
-    G = np.zeros((400,840))
+    G = np.zeros((400,840)) #every row in G represents a condition that no sum of edges from one vertex can be bigger than 1
 
     row=0
     for i in range(0,780,41):
@@ -46,14 +48,14 @@ def relaxMaximalWeightMatching2(output=False):
     if output:
         for x, weight in zip(final_solution, w):
             print("Weight:", weight, "soution:", x)
-            print("This fractional matching contains", np.sum(final_solution), "egdes")
-            print("Cost which we were maximizing is:", np.dot(final_solution,w))
+        print("This fractional matching contains", np.sum(final_solution), "egdes")
+        print("Cost which we were maximizing is:", np.dot(final_solution,w))
 
     
-
     return final_solution
 
 
+#This was written using cvxopt but the library complaied about something...
 def relaxMaximalWeightMatching():
     w = set_weights()
     G = np.zeros((400,840))
@@ -84,3 +86,4 @@ def relaxMaximalWeightMatching():
 
 if __name__=="__main__":
     relaxMaximalWeightMatching2(output=True)
+

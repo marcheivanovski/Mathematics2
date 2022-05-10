@@ -51,13 +51,13 @@ def step(k, x, w, edges_added, edges_missing, G):
 
     probability = random.uniform(0,1)
 
-    '''if np.sum(x)>20 and random.uniform(0,1)<0.2:
-        for _ in range(3):
+    if np.sum(x)>20 and random.uniform(0,1)<0.2:
+        for _ in range(10):
             remove_edge_idx = np.argmin(w[list(edges_added)])
             remove_edge = list(edges_added)[remove_edge_idx]
             x[remove_edge] = 0
             edges_added.remove(remove_edge)
-            edges_missing.add(remove_edge)'''
+            edges_missing.add(remove_edge)
         
 
 
@@ -120,7 +120,7 @@ def MaxWeightMatching(k):
     edges_missing=set([i for i in range(840)])
 
     x = np.zeros(840)
-    for i in range(1000):
+    for i in range(10000):
         x, w, edges_added, edges_missing, G = step(k, x, w, edges_added, edges_missing, G)
         
 
@@ -131,7 +131,7 @@ def MaxWeightMatching(k):
     x_relaxed = relaxMaximalWeightMatching2(output = False)
     print("This matching contains", np.sum(x), "egdes")
     print("Cost which we were maximizing is:", cost(x,w))
-    print("How far away are we from the relaxed:", np.sum(np.absolute(x_relaxed-x)))
+    #print("How far away are we from the relaxed:", np.sum(np.absolute(x_relaxed-x)))
     return x
 
 

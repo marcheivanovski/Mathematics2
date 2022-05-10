@@ -11,6 +11,8 @@ A_correct = A = np.array([
         [77.0, 270.0, 60.0, 140.0, 61.0, 880.0, 330.0, 32.0]
     ])
 
+foods=["potatoes", "bread", "milk", "eggs", "yoghurt", "veg oil", "beef", "strawberies"]
+
 def calculate_Aprime_bprime(A,b,c):
     m = A.shape[0]
     n = A.shape[1]
@@ -29,11 +31,10 @@ def calculate_Aprime_bprime(A,b,c):
 
     return Aprime, bprime
 
-#still unchecked
+
 def check_primal_auxilary(Aprime, bprime, x):
     return (np.dot(Aprime, x)==bprime).all()
 
-#still unchecked
 def check_dual_auxilary(A, b, c, M, y, s):
     m = A.shape[0]
     n = A.shape[1]
@@ -65,7 +66,7 @@ def check_invariant_2 (A, y, s, c):
     return (np.dot(A.T, y)+s == c).all()
 
 def check_invariant_3 (x, s, mu):
-    return np.sum(np.sqrt(x*s/mu -1)) < 1/4
+    return np.sum((x*s/mu -1)**2) < 1/4
 
 def iterative_improvement(A, b, s, x, mu_prime):
     #We have to get rid of the last two vars
@@ -121,8 +122,8 @@ def interior_point_method(c, A, b):
     s[-2] = mu
     s[-1] = M+mu
 
-    '''
-    if not check_invariant_3(x, s, mu):
+    
+    '''if not check_invariant_3(x/W, s, mu):
         print('Invariant 3 not satisfied.')
         return
     elif not check_invariant_2(A, y, s, c):
@@ -130,11 +131,11 @@ def interior_point_method(c, A, b):
         return
     elif not check_invariant_1(A, x, b):
         print('Invariant 1 not satisfied.')
-        return
-    '''
-
-    delta = 1/4.65 #delta = 1/4.65
+        return'''
+    
+    delta = 1/4.65 
     while True:
+        print("The new mu is:", mu, "and the value objective gap is", np.dot(x.T,s))
         mu = (1-delta)*mu
         h, k, f = iterative_improvement(Aprime, bprime, s, x, mu)
 
@@ -173,43 +174,19 @@ def interior_point_method(c, A, b):
     print("N complement set contains:", N_complement)
 
     A_n = A[:, N_complement]
-    '''
-    foods=["potatoes", "bread", "milk", "eggs", "yoghurt", "veg oil", "beef", "strawberies"]
-    print("Optimal solution is:")
-
-    for i in range(len(foods)):
-        print(f'{foods[i]:>{15}} : {str(round(optimal_x[i][0], 2))}')
-
-    print("Cost of all these items is:", np.dot(c.T, optimal_x)[0][0])
-    print("Daily needs (CH,PR,FT,EN):\n", np.dot(A, optimal_x).T)
-    '''    
+       
     if A_n.shape[0]<A_n.shape[1]: #recursion
-        x_final = interior_point_method(c, A_n, b)
+        x_final = interior_point_method(c[N_complement], A_n, b[N_complement])
     elif A_n.shape[0]>A_n.shape[1]:
         #in this scenario we have more equations than variables, so no need to do recursion since we do not want to remove more variables
-        #this is why we can add one food to make the system square
-        optimal_x_old[N_complement]=0
-        arg_max = np.argmax(optimal_x_old)
-        N_complement.append(arg_max)
-        A_n = A[:, N_complement]
-        #print("well shoot ", A_n.shape)
-
-        optimal_x = np.linalg.solve(A_n, b)[...,None]
-        print(optimal_x)
-
-        foods=["potatoes", "bread", "milk", "eggs", "yoghurt", "veg oil", "beef", "strawberies"]
-        print("Optimal solution is:")
-
-        for i in range(len(foods)):
-            print(f'{foods[i]:>{15}} : {str(round(optimal_x[i][0], 2))}')
-
-        print("Cost of all these items is:", np.dot(c.T, optimal_x)[0][0])
-        print("Daily needs (CH,PR,FT,EN):\n", np.dot(A, optimal_x).T)
+        #system might be unsolvable in such case
+        ...
     else:
+        #just solve the squared mtx
         optimal_x_final = np.linalg.solve(A_n, b)
         optimal_x[N_complement, :]= optimal_x_final
     
-        foods=["potatoes", "bread", "milk", "eggs", "yoghurt", "veg oil", "beef", "strawberies"]
+        
 
         print("Optimal solution is:")
 
@@ -265,12 +242,17 @@ def bread_commercial():
     b_ub = [-250.0, -50.0, -50.0, -2200.0, 370.0, 170.0, 90.0, 2400.0]
 
     res = linprog(c, A_ub=A_ub, b_ub=b_ub)
-    print(res)
+    #print(res)
+    print("------Commercial solver solution----------")
+
+    print("Optimal solution is:")
+    for i in range(len(foods)):
+        print(f'{foods[i]:>{15}} : {str(round(res.x[i], 2))}')
+    print("Cost of all these items is:", np.dot(c, res.x))
 
 
 if __name__=='__main__':
     bread_my_method()
-    print("-----------------")
     bread_commercial()
 
         
