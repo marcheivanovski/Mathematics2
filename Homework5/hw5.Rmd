@@ -21,6 +21,14 @@ When you click the **Knit** button a document will be generated that includes bo
 library("MASS")
 library("plotly")
 library("mvtnorm")
+library(ggplot2)
+library(numDeriv)
+library(coda)
+library(grid)
+
+source("HMC.r")
+source("Multiplot.r")
+
 set.seed(123) 
 setwd("C:/Users/marko/OneDrive/Desktop/M2/Homework5")
 ```
@@ -252,4 +260,117 @@ samples <- metropolis_hastings(p_scenario3, 10000, c(0.2, 0.5), diag(2), 2)
 den3d <- kde2d(samples[,1], samples[,2])
 plot_ly(x=den3d$x, y=den3d$y, z=den3d$z) %>% add_surface()
 ```
+## HMC
+
+```{r}
+HMC = function (U, grad_U, epsilon, L, current_q)
+{
+  q = current_q
+  p = rnorm(length(q),0,1)  # independent standard normal variates
+  current_p = p
+
+  traj <- NULL
+  traj <- rbind(traj, data.frame(t(p),t(q), H = U(q)+sum(p^2) / 2))
+
+  
+  # Make a half step for momentum at the beginning
+  p=p-epsilon * grad_U(q) / 2
+  # Alternate full steps for position and momentum
+  for (i in 1:L)
+  {
+    # Make a full step for the position
+    q=q+epsilon * p
+
+    # Make a full step for the momentum, except at end of trajectory
+    if (i!=L) p=p-epsilon * grad_U(q)
+    traj <- rbind(traj, data.frame(t(p),t(q), H = U(q)+sum(p^2) / 2))
+    
+   
+  }
+  # Make a half step for momentum at the end.
+  p=p-epsilon * grad_U(q) / 2
+  # Negate momentum at end of trajectory to make the proposal symmetric
+  p=-p
+  # Evaluate potential and kinetic energies at start and end of trajectory
+  current_U = U(current_q)
+  current_K = sum(current_p^2) / 2
+  proposed_U = U(q)
+  proposed_K = sum(p^2) / 2
+  # Accept or reject the state at end of trajectory, returning either
+  # the position at the end of the trajectory or the initial position
+
+  if (runif(1) < exp(current_U-proposed_U+current_K-proposed_K))
+  {
+    return (list(next_q=q, traj = traj))  # accept
+  }
+  else
+  {
+    return (list(next_q=current_q, traj = traj))  # reject
+  }
+}
+```
+
+
+## Sampleing from all the scenarios using HMC
+
+
+
+### Scenario 1
+
+
+### Scenario 2
+```{r}
+B <- 0.05
+
+minus_logf <- function(x) {
+  -(-(x[1]^2)/200- 0.5 * (x[2]+ B * x[1]^2 - 100*B)^2 )
+}
+
+minus_logf_grad <- function(x) {
+  g1 <- -(x[1])/100- 1.0 * (2* B * x[1]) * (x[2]+ B * x[1]^2 - 100*B)
+  g2 <- - 1.0 * (x[2]+ B * x[1]^2 - 100*B)
+  -c(g1,g2)
+}
+
+## HMC
+L = 27
+epsilon = 0.6
+current_q = c(0,0)
+m = 100
+
+samples <- NULL
+for (i in 1:m) {
+  print(i)
+  res = HMC(minus_logf, minus_logf_grad, epsilon, L, current_q)
+  samples = rbind(samples, data.frame(Q1 = res$next_q[1], Q2 = res$next_q[2]))
+  current_q = res$next_q
+  if (i > 10) print(m*effectiveSize(samples[,1:2])/i) # monitor effective size of first 3 components
+  
+  # plot trajectory
+  if (i %% 20 == 1) {
+    g1 = ggplot(res$traj,aes(x=X1,y=X2))  + coord_cartesian(ylim=c(-2, 2), xlim=c(-2,2))+ geom_point() + 
+      geom_path() + theme_bw() + xlab("p1") + ylab("p2") +
+      geom_point(data=res$traj[1,], colour = "red", aes(x=X1,y=X2))
+    
+    x <- seq(-25,25,0.2)
+    x0 <- expand.grid(x,x)
+    y <- apply(x0,1,minus_logf)
+    df <- data.frame(x0,y = exp(-y))
+    
+
+
+    g2 = ggplot(res$traj,aes(x=X1.1,y=X2.1)) + geom_point() + 
+      geom_path() + theme_bw() + xlab("q1")  + coord_cartesian(xlim=c(-25, 25), ylim=c(-20,10)) + ylab("q2") +
+      geom_point(data=res$traj[1,], colour = "red", aes(x=X1.1,y=X2.1)) +
+      geom_contour(data = df, mapping =  aes(Var1, Var2, z = y), alpha = 0.2, colour="black")  
+    
+    g3 = ggplot(res$traj,aes(x=1:nrow(res$traj),y=H)) + geom_point() + 
+      geom_path() + theme_bw() + ylab("H") + xlab("step") 
+    multiplot(g1,g2,g3,cols=3)
+  }
+    
+
+}
+```
+
 
