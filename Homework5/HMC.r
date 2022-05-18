@@ -5,7 +5,7 @@ HMC = function (U, grad_U, epsilon, L, current_q)
   current_p = p
 
   traj <- NULL
-  traj <- rbind(traj, data.frame(t(p),t(q), H = U(q)+sum(p^2) / 2))
+  traj <- rbind(traj, data.frame(t(p),t(q), H = U(q)+sum(p^2) / 2)) #t() transposed
 
   
   # Make a half step for momentum at the beginning

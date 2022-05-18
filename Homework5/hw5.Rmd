@@ -25,6 +25,8 @@ library(ggplot2)
 library(numDeriv)
 library(coda)
 library(grid)
+library(mcmcse)
+library(stats)
 
 source("HMC.r")
 source("Multiplot.r")
@@ -194,8 +196,8 @@ samples <- rejection_sampling(p_scenario3, envelope_uniform, envelope_uniform_sa
 
 ## Bivariate normal envelope
 #M <- calculate_M(p_scenario3, envelope_multi_norm, envelope_multi_norm_sampler, n)
-M <- 1.147597e-212
-samples <- rejection_sampling(p_scenario3, envelope_multi_norm, envelope_multi_norm_sampler, M, 10, n)
+#M <- 1.147597e-212
+#samples <- rejection_sampling(p_scenario3, envelope_multi_norm, envelope_multi_norm_sampler, M, 10, n)
 
 #plot(samples)
 #persp(den3d, box=FALSE)
@@ -233,14 +235,35 @@ metropolis_hastings <- function(f, m, x0, cov, dimensions){ #(x, alpha, beta, de
 
 ```{r}
 n <- 2
-#samples <- rejection_sampling(p_scenario1, envelope_uniform, envelope_uniform_sampler, M, 1000, n)
-samples <- metropolis_hastings(p_scenario1, 10000, c(0.2, 0.5), diag(2), 2)
+m <- 10000
+samples <- metropolis_hastings(p_scenario1, m, c(0.2, 0.5), diag(2), 2)
 
 #plot(samples)
 #persp(den3d, box=FALSE)
 den3d <- kde2d(samples[,1], samples[,2])
 plot_ly(x=den3d$x, y=den3d$y, z=den3d$z) %>% add_surface()
+
+acf(samples, lag.max = 100)
+
+#df_samples <- data.frame(x = samples[,1], y = samples[,2])
+#g1 <- ggplot(df_samples, aes(x = x, y = y)) + 
+#  geom_line()
+#plot(g1)
+
+
+print("MCMC standard error:")
+mcse(samples)$se #returns estimate of the mean and 
+print("MCMC EES by components:")
+ess(samples)
+#m * (var(samples) / m) / (mcse(samples)$se)^2 # diy ESS: sample size times ratio of MC and MCMC error
+
+paste0("Mean of samples", mean(samples[,1])," ", mean(samples[,2]) )
 ```
+
+
+
+
+
 ```{r}
 n <- 2
 samples <- metropolis_hastings(p_scenario2, 10000, c(0.2, 0.5), diag(2), 2)
@@ -313,9 +336,72 @@ HMC = function (U, grad_U, epsilon, L, current_q)
 
 ## Sampleing from all the scenarios using HMC
 
+HMC (step-size and number of steps are parameters; you can use unit mass matrix, but if you want to impress, you can tune the diagonal elements as well)
+```{r}
+hamiltonian_sampling <- function (L, epsilon, current_q, m, minus_logf, minus_logf_grad){
+  samples <- NULL
+  for (i in 1:m) {
+    #print(i)
+    res = HMC(minus_logf, minus_logf_grad, epsilon, L, current_q)
+    samples = rbind(samples, data.frame(Q1 = res$next_q[1], Q2 = res$next_q[2]))
+    current_q = res$next_q
+    #if (i > 10) print(m*effectiveSize(samples[,1:2])/i) # monitor effective size of first 3 components
+    
+    # plot trajectory
+    if (i %% 20 == 1) {
+      g1 = ggplot(res$traj,aes(x=X1,y=X2))  + coord_cartesian(ylim=c(-2, 2), xlim=c(-2,2))+ geom_point() + 
+        geom_path() + theme_bw() + xlab("p1") + ylab("p2") +
+        geom_point(data=res$traj[1,], colour = "red", aes(x=X1,y=X2))
+      
+      x <- seq(-25,25,0.2)
+      x0 <- expand.grid(x,x)
+      y <- apply(x0,1,minus_logf)
+      df <- data.frame(x0,y = exp(-y))
+      
+  
+  
+      g2 = ggplot(res$traj,aes(x=X1.1,y=X2.1)) + geom_point() + 
+        geom_path() + theme_bw() + xlab("q1")  + coord_cartesian(xlim=c(-5, 5), ylim=c(-5,5)) + ylab("q2") +
+        geom_point(data=res$traj[1,], colour = "red", aes(x=X1.1,y=X2.1)) +
+        geom_contour(data = df, mapping =  aes(Var1, Var2, z = y), alpha = 0.2, colour="black")  
+      
+      g3 = ggplot(res$traj,aes(x=1:nrow(res$traj),y=H)) + geom_point() + 
+        geom_path() + theme_bw() + ylab("H") + xlab("step") 
+      multiplot(g1,g2,g3,cols=3)
+      
+    }
+  }
+  return (samples)
+}
+
+```
+
 
 
 ### Scenario 1
+Bivariate standard normal distribution
+```{r}
+minus_logf <- function(x) {
+  return (-log(p_scenario1(c(x))))
+}
+
+minus_logf_grad <- function(x) {
+  mu <- c(0,0)
+  sigma <- matrix(c(1, 0, 0, 1), ncol = 2)
+  return ((sigma%*%(x-mu)))
+}
+L = 10
+epsilon = 0.4
+current_q = c(0,0)
+m = 100
+
+samples <- hamiltonian_sampling(L, epsilon, current_q, m, minus_logf, minus_logf_grad)
+## HMC
+
+den3d <- kde2d(samples[,1], samples[,2])
+plot_ly(x=den3d$x, y=den3d$y, z=den3d$z) %>% add_surface()
+```
+
 
 
 ### Scenario 2
@@ -338,39 +424,56 @@ epsilon = 0.6
 current_q = c(0,0)
 m = 100
 
-samples <- NULL
-for (i in 1:m) {
-  print(i)
-  res = HMC(minus_logf, minus_logf_grad, epsilon, L, current_q)
-  samples = rbind(samples, data.frame(Q1 = res$next_q[1], Q2 = res$next_q[2]))
-  current_q = res$next_q
-  if (i > 10) print(m*effectiveSize(samples[,1:2])/i) # monitor effective size of first 3 components
-  
-  # plot trajectory
-  if (i %% 20 == 1) {
-    g1 = ggplot(res$traj,aes(x=X1,y=X2))  + coord_cartesian(ylim=c(-2, 2), xlim=c(-2,2))+ geom_point() + 
-      geom_path() + theme_bw() + xlab("p1") + ylab("p2") +
-      geom_point(data=res$traj[1,], colour = "red", aes(x=X1,y=X2))
-    
-    x <- seq(-25,25,0.2)
-    x0 <- expand.grid(x,x)
-    y <- apply(x0,1,minus_logf)
-    df <- data.frame(x0,y = exp(-y))
-    
+samples <- hamiltonian_sampling(L, epsilon, current_q, m, minus_logf, minus_logf_grad)
+den3d <- kde2d(samples[,1], samples[,2])
+plot_ly(x=den3d$x, y=den3d$y, z=den3d$z) %>% add_surface()
+```
+## Scenario 3
 
+```{r}
+B <- 0.05
 
-    g2 = ggplot(res$traj,aes(x=X1.1,y=X2.1)) + geom_point() + 
-      geom_path() + theme_bw() + xlab("q1")  + coord_cartesian(xlim=c(-25, 25), ylim=c(-20,10)) + ylab("q2") +
-      geom_point(data=res$traj[1,], colour = "red", aes(x=X1.1,y=X2.1)) +
-      geom_contour(data = df, mapping =  aes(Var1, Var2, z = y), alpha = 0.2, colour="black")  
-    
-    g3 = ggplot(res$traj,aes(x=1:nrow(res$traj),y=H)) + geom_point() + 
-      geom_path() + theme_bw() + ylab("H") + xlab("step") 
-    multiplot(g1,g2,g3,cols=3)
-  }
-    
-
+minus_logf <- function(x) {
+  -log(p_scenario3(c(x)))
 }
+
+product_of_rest <- function(df,x){
+  y_pred <- as.matrix(df[,1:2]) %*% x
+  y_pred <- 1/(1+exp(-y_pred))
+  return (prod(lr_likelihood(df$y, y_pred)))
+}
+
+minus_logf_grad <- function(x) {
+  df <- read.csv("datset.csv", header = TRUE, sep = ",")
+  likelihood <- p_scenario3(x)
+  sum_beta1 <- 0
+  sum_beta2 <- 0
+  for (i in 1:nrow(df)){
+    exponent <- exp(-as.matrix(df[i,1:2]) %*% x)
+    if (df[i,]$y==1){
+      sum_beta1 <- sum_beta1 + same_part*df[i,1]
+      sum_beta2 <- sum_beta2 + same_part*df[i,2]
+    }
+    else{
+      same_part <- (1-1/(1+exponent))**(-1)*(1+exponent)**(-2)*exponent*(-1)
+      sum_beta1 <- sum_beta1 + same_part*df[i,1]
+      sum_beta2 <- sum_beta2 + same_part*df[i,2]
+    }
+  }
+  #model  <- glm(y ~ X2, family="binomial", data=df)
+  #y_pred <- predict(model, data.frame(X2=df[,2]), type="response")
+  return (c(-1*sum_beta1, -1*sum_beta2))
+}
+
+## HMC
+L = 5
+epsilon = 0.1
+current_q = c(0.58,-0.15)
+m = 10
+
+samples <- hamiltonian_sampling(L, epsilon, current_q, m, minus_logf, minus_logf_grad)
+den3d <- kde2d(samples[,1], samples[,2])
+plot_ly(x=den3d$x, y=den3d$y, z=den3d$z) %>% add_surface()
 ```
 
 
