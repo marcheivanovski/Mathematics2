@@ -77,6 +77,22 @@ p_scenario4 <- function(x){
 p_scenario_test <- function(x){
   return (0.1)
 }
+
+p_scenario3_mean <- function(){
+  df <- read.csv("datset.csv", header = TRUE, sep = ",")
+  model  <- glm(y ~ X2, family="binomial", data=df)
+  #print(summary(model))
+  #y_pred <- predict(model, data.frame(X2=df[,2]), type="response")
+  return (model$coefficients)
+}
+
+p_scenario4_mean <- function(){
+  df <- read.csv("datset.csv", header = TRUE, sep = ",")
+  model  <- glm(y ~ X2+X3+X4+X5+X6+X7+X8+X9+X10+X11, family="binomial", data=df)
+  #print(summary(model))
+  #y_pred <- predict(model, data.frame(X2=df[,2]), type="response")
+  return (model$coefficients)
+}
 ```
 
 ## Rejection sampling
@@ -152,6 +168,7 @@ rejection_sampling <- function (f, g, g_sampler, M, m, n){
 ```{r}
 n <- 2
 ## Uniform envelope
+set.seed(123)
 #M <- calculate_M(p_scenario1, envelope_uniform, envelope_uniform_sampler, n) + 0.5 #0.5 added just to be on the safe side
 #samples <- rejection_sampling(p_scenario1, envelope_uniform, envelope_uniform_sampler, M, 1000, n)
 
@@ -163,24 +180,61 @@ samples <- rejection_sampling(p_scenario1, envelope_multi_norm, envelope_multi_n
 #plot(samples)
 #persp(den3d, box=FALSE)
 den3d <- kde2d(samples[,1], samples[,2])
-plot_ly(x=den3d$x, y=den3d$y, z=den3d$z) %>% add_surface()
+plot_ly(x=den3d$x, y=den3d$y, z=den3d$z) %>% add_surface() %>% layout(title = 'Samples distribution')
+
+
+acf(samples, lag.max = 100)
+print("MCMC standard error:")
+mcse(samples)$se #returns estimate of the mean and 
+print("MCMC EES by components:")
+ess(samples)
+
+# traceplot
+g1 <- ggplot( data.frame(ID = c(1:1000,1:1000), x = c(samples[,1], samples[,2]), dim=c(rep('dim_1',1000), rep('dim_2',1000)) ), aes(x = ID, y = x)) + 
+  geom_line()+
+  ggtitle("Trace plot of both dimensions") +
+  facet_wrap(~dim)
+plot(g1)
+
+#m * (var(samples) / m) / (mcse(samples)$se)^2 # diy ESS: sample size times ratio of MC and MCMC error
+
+paste0("True mean is (0,0)")
+paste0("Mean of samples (",mean(samples[,1]),",",mean(samples[,2]),")")
 ```
 ### Scenario 2: the shape of the banana function
 
 ```{r}
 n <- 2
+m <- 100
 ## Uniform envelope
-M <- calculate_M(p_scenario2, envelope_uniform, envelope_uniform_sampler, n)
-samples <- rejection_sampling(p_scenario2, envelope_uniform, envelope_uniform_sampler, M, 1000, n)
+#M <- calculate_M(p_scenario2, envelope_uniform, envelope_uniform_sampler, n)
+#samples <- rejection_sampling(p_scenario2, envelope_uniform, envelope_uniform_sampler, M, m, n)
 
 ## Bivariate normal envelope
-#M <- calculate_M(p_scenario2, envelope_multi_norm, envelope_multi_norm_sampler, n)
-#samples <- rejection_sampling(p_scenario2, envelope_multi_norm, envelope_multi_norm_sampler, M, 100, n)
+M <- calculate_M(p_scenario2, envelope_multi_norm, envelope_multi_norm_sampler, n)
+samples <- rejection_sampling(p_scenario2, envelope_multi_norm, envelope_multi_norm_sampler, M, m, n)
 
 #plot(samples)
 #persp(den3d, box=FALSE)
 den3d <- kde2d(samples[,1], samples[,2])
-plot_ly(x=den3d$x, y=den3d$y, z=den3d$z) %>% add_surface()
+plot_ly(x=den3d$x, y=den3d$y, z=den3d$z) %>% add_surface() %>% layout(title = 'Samples distribution')
+
+acf(samples, lag.max = 100)
+print("MCMC standard error:")
+mcse(samples)$se #returns estimate of the mean and 
+print("MCMC EES by components:")
+ess(samples)
+#m * (var(samples) / m) / (mcse(samples)$se)^2 # diy ESS: sample size times ratio of MC and MCMC error
+
+
+# traceplot
+g1 <- ggplot( data.frame(ID = c(1:m,1:m), x = c(samples[,1], samples[,2]), dim=c(rep('dim_1',m), rep('dim_2',m)) ), aes(x = ID, y = x)) + 
+  geom_line()+
+  ggtitle("Trace plot of both dimensions") +
+  facet_wrap(~dim)
+plot(g1)
+
+paste0("Mean of samples (",mean(samples[,1]),",",mean(samples[,2]),")")
 ```
 
 
@@ -191,33 +245,54 @@ plot_ly(x=den3d$x, y=den3d$y, z=den3d$z) %>% add_surface()
 n <- 2
 ## Uniform envelope
 #M <- calculate_M(p_scenario3, envelope_uniform, envelope_uniform_sampler, n)
-M <- 5.232946e-214
-samples <- rejection_sampling(p_scenario3, envelope_uniform, envelope_uniform_sampler, M, 10, n) #superrrrrrrr slow
+#M <- 5.232946e-214
+#samples <- rejection_sampling(p_scenario3, envelope_uniform, envelope_uniform_sampler, M, 10, n) #superrrrrrrr slow
 
 ## Bivariate normal envelope
 #M <- calculate_M(p_scenario3, envelope_multi_norm, envelope_multi_norm_sampler, n)
-#M <- 1.147597e-212
-#samples <- rejection_sampling(p_scenario3, envelope_multi_norm, envelope_multi_norm_sampler, M, 10, n)
+M <- 1.147597e-212
+m <- 100
+samples <- rejection_sampling(p_scenario3, envelope_multi_norm, envelope_multi_norm_sampler, M, m, n)
 
 #plot(samples)
 #persp(den3d, box=FALSE)
 den3d <- kde2d(samples[,1], samples[,2])
-plot_ly(x=den3d$x, y=den3d$y, z=den3d$z) %>% add_surface()
+plot_ly(x=den3d$x, y=den3d$y, z=den3d$z) %>% add_surface() %>% layout(title = 'Samples distribution')
+
+
+acf(samples, lag.max = 100)
+print("MCMC standard error:")
+mcse(samples)$se #returns estimate of the mean and 
+print("MCMC EES by components:")
+ess(samples)
+#m * (var(samples) / m) / (mcse(samples)$se)^2 # diy ESS: sample size times ratio of MC and MCMC error
+
+# traceplot
+g1 <- ggplot( data.frame(ID = c(1:m,1:m), x = c(samples[,1], samples[,2]), dim=c(rep('dim_1',m), rep('dim_2',m)) ), aes(x = ID, y = x)) + 
+  geom_line()+
+  ggtitle("Trace plot of both dimensions") +
+  facet_wrap(~dim)
+plot(g1)
+
+paste0("True mean is ", p_scenario3_mean())
+paste0("Mean of samples (",mean(samples[,1]),",",mean(samples[,2]),")")
 ```
 ## Metropolis Hasting
 
 ```{r}
-metropolis_hastings <- function(f, m, x0, cov, dimensions){ #(x, alpha, beta, delta)
+metropolis_hastings <- function(f, m, x0, cov, dimensions){ 
   #New code
-  samples <- samples <- matrix(vector('integer', 2*m), ncol = dimensions)
+  samples <- matrix(vector('integer', dimensions*m), ncol = dimensions)
   samples[1,] <- x0
   for(i in 2:m){
     prev_x <-  samples[i-1,]
     new_x <- rmvnorm(1, prev_x, cov)
-    #print(t(prev_x))
     alpha <- min(1, (f(c(new_x))*dmvnorm(new_x, prev_x, cov))/(f(c(prev_x))*dmvnorm(prev_x, new_x, cov)) )
     u <- runif(1)
-    if (u<=alpha){
+    if (is.nan(alpha)){
+      samples[i,]<-prev_x
+    }
+    else if (u<=alpha){
       samples[i,]<-new_x
     }
     else{
@@ -235,27 +310,29 @@ metropolis_hastings <- function(f, m, x0, cov, dimensions){ #(x, alpha, beta, de
 
 ```{r}
 n <- 2
-m <- 10000
-samples <- metropolis_hastings(p_scenario1, m, c(0.2, 0.5), diag(2), 2)
+m <- 1000
+set.seed(134)
+samples <- metropolis_hastings(p_scenario1, m, c(1, 1), 2*diag(2), 2)
 
 #plot(samples)
 #persp(den3d, box=FALSE)
 den3d <- kde2d(samples[,1], samples[,2])
-plot_ly(x=den3d$x, y=den3d$y, z=den3d$z) %>% add_surface()
+plot_ly(x=den3d$x, y=den3d$y, z=den3d$z) %>% add_surface() %>% layout(title = 'Samples distribution')
 
 acf(samples, lag.max = 100)
-
-#df_samples <- data.frame(x = samples[,1], y = samples[,2])
-#g1 <- ggplot(df_samples, aes(x = x, y = y)) + 
-#  geom_line()
-#plot(g1)
-
 
 print("MCMC standard error:")
 mcse(samples)$se #returns estimate of the mean and 
 print("MCMC EES by components:")
 ess(samples)
 #m * (var(samples) / m) / (mcse(samples)$se)^2 # diy ESS: sample size times ratio of MC and MCMC error
+
+# traceplot
+g1 <- ggplot( data.frame(ID = c(1:m,1:m), x = c(samples[,1], samples[,2]), dim=c(rep('dim_1',m), rep('dim_2',m)) ), aes(x = ID, y = x)) + 
+  geom_line()+
+  ggtitle("Trace plot of both dimensions") +
+  facet_wrap(~dim)
+plot(g1)
 
 paste0("Mean of samples", mean(samples[,1])," ", mean(samples[,2]) )
 ```
@@ -266,23 +343,72 @@ paste0("Mean of samples", mean(samples[,1])," ", mean(samples[,2]) )
 
 ```{r}
 n <- 2
-samples <- metropolis_hastings(p_scenario2, 10000, c(0.2, 0.5), diag(2), 2)
+m<-1000
+samples <- metropolis_hastings(p_scenario2, m, c(5.5, 4), matrix(c(2,0,0,1),nrow=2), 2)
 
 #plot(samples)
 #persp(den3d, box=FALSE)
 den3d <- kde2d(samples[,1], samples[,2])
-plot_ly(x=den3d$x, y=den3d$y, z=den3d$z) %>% add_surface()
+plot_ly(x=den3d$x, y=den3d$y, z=den3d$z) %>% add_surface() %>% layout(title = 'Samples distribution')
+
+acf(samples, lag.max = 100)
+print("MCMC standard error:")
+mcse(samples)$se #returns estimate of the mean and 
+print("MCMC EES by components:")
+ess(samples)
+#m * (var(samples) / m) / (mcse(samples)$se)^2 # diy ESS: sample size times ratio of MC and MCMC error
+
+g1 <- ggplot( data.frame(ID = c(1:m,1:m), x = c(samples[,1], samples[,2]), dim=c(rep('dim_1',m), rep('dim_2',m)) ), aes(x = ID, y = x)) + 
+  geom_line()+
+  ggtitle("Trace plot of both dimensions") +
+  facet_wrap(~dim)
+plot(g1)
+
+paste0("Mean of samples (",mean(samples[,1]),",",mean(samples[,2]),")")
 ```
 
 ```{r}
 n <- 2
-samples <- metropolis_hastings(p_scenario3, 10000, c(0.2, 0.5), diag(2), 2)
+m<-1000
+samples <- metropolis_hastings(p_scenario3, m, c(1.4, -0.76), 0.01*diag(2), 2)
 
 #plot(samples)
 #persp(den3d, box=FALSE)
 den3d <- kde2d(samples[,1], samples[,2])
 plot_ly(x=den3d$x, y=den3d$y, z=den3d$z) %>% add_surface()
+
+acf(samples, lag.max = 100)
+print("MCMC standard error:")
+mcse(samples)$se #returns estimate of the mean and 
+print("MCMC EES by components:")
+ess(samples)
+#m * (var(samples) / m) / (mcse(samples)$se)^2 # diy ESS: sample size times ratio of MC and MCMC error
+
+g1 <- ggplot( data.frame(ID = c(1:m,1:m), x = c(samples[,1], samples[,2]), dim=c(rep('dim_1',m), rep('dim_2',m)) ), aes(x = ID, y = x)) + 
+  geom_line()+
+  ggtitle("Trace plot of both dimensions") +
+  facet_wrap(~dim)
+plot(g1)
+
+paste0("Mean of samples (",mean(samples[,1]),",",mean(samples[,2]),")")
 ```
+```{r}
+n <- 11
+m<-1000
+samples <- metropolis_hastings(p_scenario4, m, c(2.05, -0.87, -0.5,  0.72, -0.09, -1.02, -0.82,  0.24, -0.61, -0.42,  0.47), 0.000005*diag(11), 11)
+
+
+acf(samples, lag.max = 100)
+print("MCMC standard error:")
+mcse(samples)$se #returns estimate of the mean and 
+print("MCMC EES by components:")
+ess(samples)
+#m * (var(samples) / m) / (mcse(samples)$se)^2 # diy ESS: sample size times ratio of MC and MCMC error
+
+paste0("Mean of samples (",mean(samples[,1]),",",mean(samples[,2]),")")
+```
+
+
 ## HMC
 
 ```{r}
@@ -390,16 +516,26 @@ minus_logf_grad <- function(x) {
   sigma <- matrix(c(1, 0, 0, 1), ncol = 2)
   return ((sigma%*%(x-mu)))
 }
-L = 10
-epsilon = 0.4
+L = 20
+epsilon = 0.5
 current_q = c(0,0)
 m = 100
 
 samples <- hamiltonian_sampling(L, epsilon, current_q, m, minus_logf, minus_logf_grad)
+samples <- matrix(c(samples$Q1, samples$Q2), nrow=m)
 ## HMC
 
 den3d <- kde2d(samples[,1], samples[,2])
 plot_ly(x=den3d$x, y=den3d$y, z=den3d$z) %>% add_surface()
+
+acf(samples, lag.max = 100)
+print("MCMC standard error:")
+mcse(samples)$se #returns estimate of the mean and 
+print("MCMC EES by components:")
+ess(samples)
+#m * (var(samples) / m) / (mcse(samples)$se)^2 # diy ESS: sample size times ratio of MC and MCMC error
+
+paste0("Mean of samples (",mean(samples[,1]),",",mean(samples[,2]),")")
 ```
 
 
@@ -425,8 +561,19 @@ current_q = c(0,0)
 m = 100
 
 samples <- hamiltonian_sampling(L, epsilon, current_q, m, minus_logf, minus_logf_grad)
+samples <- matrix(c(samples$Q1, samples$Q2), nrow=m)
+
 den3d <- kde2d(samples[,1], samples[,2])
 plot_ly(x=den3d$x, y=den3d$y, z=den3d$z) %>% add_surface()
+
+acf(samples, lag.max = 100)
+print("MCMC standard error:")
+mcse(samples)$se #returns estimate of the mean and 
+print("MCMC EES by components:")
+ess(samples)
+#m * (var(samples) / m) / (mcse(samples)$se)^2 # diy ESS: sample size times ratio of MC and MCMC error
+
+paste0("Mean of samples (",mean(samples[,1]),",",mean(samples[,2]),")")
 ```
 ## Scenario 3
 
@@ -437,12 +584,6 @@ minus_logf <- function(x) {
   -log(p_scenario3(c(x)))
 }
 
-product_of_rest <- function(df,x){
-  y_pred <- as.matrix(df[,1:2]) %*% x
-  y_pred <- 1/(1+exp(-y_pred))
-  return (prod(lr_likelihood(df$y, y_pred)))
-}
-
 minus_logf_grad <- function(x) {
   df <- read.csv("datset.csv", header = TRUE, sep = ",")
   likelihood <- p_scenario3(x)
@@ -451,11 +592,12 @@ minus_logf_grad <- function(x) {
   for (i in 1:nrow(df)){
     exponent <- exp(-as.matrix(df[i,1:2]) %*% x)
     if (df[i,]$y==1){
+      same_part <- (1+exponent)**(-1)*(-1)*exponent*(-1)
       sum_beta1 <- sum_beta1 + same_part*df[i,1]
       sum_beta2 <- sum_beta2 + same_part*df[i,2]
     }
     else{
-      same_part <- (1-1/(1+exponent))**(-1)*(1+exponent)**(-2)*exponent*(-1)
+      same_part <- (1/(1-1/(1+exponent)))*(1+exponent)**(-2)*exponent*(-1)
       sum_beta1 <- sum_beta1 + same_part*df[i,1]
       sum_beta2 <- sum_beta2 + same_part*df[i,2]
     }
@@ -467,13 +609,23 @@ minus_logf_grad <- function(x) {
 
 ## HMC
 L = 5
-epsilon = 0.1
-current_q = c(0.58,-0.15)
+epsilon = 0.2
+current_q = c(1.15,-0.58)
 m = 10
 
 samples <- hamiltonian_sampling(L, epsilon, current_q, m, minus_logf, minus_logf_grad)
+samples <- matrix(c(samples$Q1, samples$Q2), nrow=m)
 den3d <- kde2d(samples[,1], samples[,2])
 plot_ly(x=den3d$x, y=den3d$y, z=den3d$z) %>% add_surface()
+
+acf(samples, lag.max = 100)
+print("MCMC standard error:")
+mcse(samples)$se #returns estimate of the mean and 
+print("MCMC EES by components:")
+ess(samples)
+#m * (var(samples) / m) / (mcse(samples)$se)^2 # diy ESS: sample size times ratio of MC and MCMC error
+
+paste0("Mean of samples (",mean(samples[,1]),",",mean(samples[,2]),")")
 ```
 
 
