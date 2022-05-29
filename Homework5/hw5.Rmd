@@ -28,7 +28,7 @@ library(grid)
 library(mcmcse)
 library(stats)
 
-source("HMC.r")
+#source("HMC.r")
 source("Multiplot.r")
 
 set.seed(123) 
@@ -56,9 +56,10 @@ p_scenario2 <- function(x) {
   exp( (-(x[1]^2)/200- 0.5 * (x[2]+ B * x[1]^2 - 100*B)^2 ) )
 }
 
+df <- read.csv("datset.csv", header = TRUE, sep = ",")
 #x are just the fit coefficients
 p_scenario3 <- function(x){ 
-  df <- read.csv("datset.csv", header = TRUE, sep = ",")
+  #df <- read.csv("datset.csv", header = TRUE, sep = ",")
   #model  <- glm(y ~ X2, family="binomial", data=df)
   #y_pred <- predict(model, data.frame(X2=df[,2]), type="response")
   y_pred <- as.matrix(df[,1:2]) %*% x
@@ -67,19 +68,17 @@ p_scenario3 <- function(x){
 }
 
 p_scenario4 <- function(x){
-  df <- read.csv("datset.csv", header = TRUE, sep = ",")
   #model  <- glm(y ~ X2+X3+X4+X5+X6+X7+X8+X9+X10+X11, family="binomial", data=df)
   #y_pred <- predict(model, df[,2:11], type="response")
+  #print(x)
+  #print("---")
   y_pred <- as.matrix(df[,1:11]) %*% x
+  y_pred <- 1/(1+exp(-y_pred))
   return (prod(lr_likelihood(df$y, y_pred)))
 }
 
-p_scenario_test <- function(x){
-  return (0.1)
-}
-
 p_scenario3_mean <- function(){
-  df <- read.csv("datset.csv", header = TRUE, sep = ",")
+  #df <- read.csv("datset.csv", header = TRUE, sep = ",")
   model  <- glm(y ~ X2, family="binomial", data=df)
   #print(summary(model))
   #y_pred <- predict(model, data.frame(X2=df[,2]), type="response")
@@ -87,7 +86,7 @@ p_scenario3_mean <- function(){
 }
 
 p_scenario4_mean <- function(){
-  df <- read.csv("datset.csv", header = TRUE, sep = ",")
+  #df <- read.csv("datset.csv", header = TRUE, sep = ",")
   model  <- glm(y ~ X2+X3+X4+X5+X6+X7+X8+X9+X10+X11, family="binomial", data=df)
   #print(summary(model))
   #y_pred <- predict(model, data.frame(X2=df[,2]), type="response")
@@ -392,10 +391,12 @@ plot(g1)
 
 paste0("Mean of samples (",mean(samples[,1]),",",mean(samples[,2]),")")
 ```
+
+
 ```{r}
 n <- 11
 m<-1000
-samples <- metropolis_hastings(p_scenario4, m, c(2.05, -0.87, -0.5,  0.72, -0.09, -1.02, -0.82,  0.24, -0.61, -0.42,  0.47), 0.000005*diag(11), 11)
+samples <- metropolis_hastings(p_scenario4, m, c(2.05, -0.87, -0.5,  0.72, -0.09, -1.02, -0.82,  0.24, -0.61, -0.42,  0.47), 0.005*diag(11), 11)
 
 
 acf(samples, lag.max = 100)
@@ -434,7 +435,6 @@ HMC = function (U, grad_U, epsilon, L, current_q)
     if (i!=L) p=p-epsilon * grad_U(q)
     traj <- rbind(traj, data.frame(t(p),t(q), H = U(q)+sum(p^2) / 2))
     
-   
   }
   # Make a half step for momentum at the end.
   p=p-epsilon * grad_U(q) / 2
@@ -445,6 +445,7 @@ HMC = function (U, grad_U, epsilon, L, current_q)
   current_K = sum(current_p^2) / 2
   proposed_U = U(q)
   proposed_K = sum(p^2) / 2
+  
   # Accept or reject the state at end of trajectory, returning either
   # the position at the end of the trajectory or the initial position
 
@@ -464,23 +465,42 @@ HMC = function (U, grad_U, epsilon, L, current_q)
 
 HMC (step-size and number of steps are parameters; you can use unit mass matrix, but if you want to impress, you can tune the diagonal elements as well)
 ```{r}
-hamiltonian_sampling <- function (L, epsilon, current_q, m, minus_logf, minus_logf_grad){
+hamiltonian_sampling <- function (L, epsilon, current_q, m, minus_logf, minus_logf_grad, dim=2, visualize=TRUE){
   samples <- NULL
   for (i in 1:m) {
     #print(i)
     res = HMC(minus_logf, minus_logf_grad, epsilon, L, current_q)
-    samples = rbind(samples, data.frame(Q1 = res$next_q[1], Q2 = res$next_q[2]))
+    if(dim==2){
+      samples = rbind(samples, data.frame(Q1 = res$next_q[1], Q2 = res$next_q[2]))
+    }
+    else{
+      samples = rbind(samples, data.frame(
+        Q1 = res$next_q[1],
+        Q2 = res$next_q[2],
+        Q3 = res$next_q[3],
+        Q4 = res$next_q[4],
+        Q5 = res$next_q[5],
+        Q6 = res$next_q[6],
+        Q7 = res$next_q[7],
+        Q8 = res$next_q[8],
+        Q9 = res$next_q[9],
+        Q10 = res$next_q[10],
+        Q11 = res$next_q[11]
+        ))
+    }
+    
     current_q = res$next_q
     #if (i > 10) print(m*effectiveSize(samples[,1:2])/i) # monitor effective size of first 3 components
     
     # plot trajectory
-    if (i %% 20 == 1) {
+    if (i %% 20 == 1 & visualize) {
       g1 = ggplot(res$traj,aes(x=X1,y=X2))  + coord_cartesian(ylim=c(-2, 2), xlim=c(-2,2))+ geom_point() + 
         geom_path() + theme_bw() + xlab("p1") + ylab("p2") +
         geom_point(data=res$traj[1,], colour = "red", aes(x=X1,y=X2))
       
       x <- seq(-25,25,0.2)
       x0 <- expand.grid(x,x)
+      #print(x0)
       y <- apply(x0,1,minus_logf)
       df <- data.frame(x0,y = exp(-y))
       
@@ -516,10 +536,11 @@ minus_logf_grad <- function(x) {
   sigma <- matrix(c(1, 0, 0, 1), ncol = 2)
   return ((sigma%*%(x-mu)))
 }
-L = 20
+L = 10
 epsilon = 0.5
-current_q = c(0,0)
-m = 100
+#current_q = c(0,0)
+current_q = c(0.5,1)
+m = 1000
 
 samples <- hamiltonian_sampling(L, epsilon, current_q, m, minus_logf, minus_logf_grad)
 samples <- matrix(c(samples$Q1, samples$Q2), nrow=m)
@@ -530,15 +551,20 @@ plot_ly(x=den3d$x, y=den3d$y, z=den3d$z) %>% add_surface()
 
 acf(samples, lag.max = 100)
 print("MCMC standard error:")
-mcse(samples)$se #returns estimate of the mean and 
+#mcse(samples)$se #returns estimate of the mean and 
 print("MCMC EES by components:")
 ess(samples)
 #m * (var(samples) / m) / (mcse(samples)$se)^2 # diy ESS: sample size times ratio of MC and MCMC error
 
+g1 <- ggplot( data.frame(ID = c(1:m,1:m), x = c(samples[,1], samples[,2]), dim=c(rep('dim_1',m), rep('dim_2',m)) ), aes(x = ID, y = x)) + 
+  geom_line()+
+  ggtitle("Trace plot of both dimensions") +
+  facet_wrap(~dim)
+plot(g1)
+
+
 paste0("Mean of samples (",mean(samples[,1]),",",mean(samples[,2]),")")
 ```
-
-
 
 ### Scenario 2
 ```{r}
@@ -557,8 +583,8 @@ minus_logf_grad <- function(x) {
 ## HMC
 L = 27
 epsilon = 0.6
-current_q = c(0,0)
-m = 100
+current_q = c(0,0) #1.4, -0.76)
+m = 1000
 
 samples <- hamiltonian_sampling(L, epsilon, current_q, m, minus_logf, minus_logf_grad)
 samples <- matrix(c(samples$Q1, samples$Q2), nrow=m)
@@ -568,10 +594,18 @@ plot_ly(x=den3d$x, y=den3d$y, z=den3d$z) %>% add_surface()
 
 acf(samples, lag.max = 100)
 print("MCMC standard error:")
-mcse(samples)$se #returns estimate of the mean and 
+#mcse(samples)$se #returns estimate of the mean and 
 print("MCMC EES by components:")
 ess(samples)
 #m * (var(samples) / m) / (mcse(samples)$se)^2 # diy ESS: sample size times ratio of MC and MCMC error
+
+g1 <- ggplot( data.frame(ID = c(1:m,1:m), x = c(samples[,1], samples[,2]), dim=c(rep('dim_1',m), rep('dim_2',m)) ), aes(x = ID, y = x)) + 
+  geom_line()+
+  ggtitle("Trace plot of both dimensions") +
+  facet_wrap(~dim)
+plot(g1)
+
+
 
 paste0("Mean of samples (",mean(samples[,1]),",",mean(samples[,2]),")")
 ```
@@ -604,16 +638,25 @@ minus_logf_grad <- function(x) {
   }
   #model  <- glm(y ~ X2, family="binomial", data=df)
   #y_pred <- predict(model, data.frame(X2=df[,2]), type="response")
-  return (c(-1*sum_beta1, -1*sum_beta2))
+  return (c(sum_beta1, sum_beta2))
+}
+
+
+minus_log_log_reg2_der <- function(x) {
+  a <- unname(as.matrix(df[, names(df) == "X1" | names(df) == "X2"]))
+  y <- df$y
+  reg <- t(x %*% t(a))
+  sigm <- 1/(1+exp(-reg))
+  return (c((t((y - sigm)) %*% a)))
 }
 
 ## HMC
-L = 5
-epsilon = 0.2
-current_q = c(1.15,-0.58)
-m = 10
+L = 70
+epsilon = 0.001
+current_q = c(1.4,-0.58) #1.4 -0.6
+m = 1000
 
-samples <- hamiltonian_sampling(L, epsilon, current_q, m, minus_logf, minus_logf_grad)
+samples <- hamiltonian_sampling(L, epsilon, current_q, m, minus_logf, minus_log_log_reg2_der)
 samples <- matrix(c(samples$Q1, samples$Q2), nrow=m)
 den3d <- kde2d(samples[,1], samples[,2])
 plot_ly(x=den3d$x, y=den3d$y, z=den3d$z) %>% add_surface()
@@ -625,7 +668,53 @@ print("MCMC EES by components:")
 ess(samples)
 #m * (var(samples) / m) / (mcse(samples)$se)^2 # diy ESS: sample size times ratio of MC and MCMC error
 
+g1 <- ggplot( data.frame(ID = c(1:m,1:m), x = c(samples[,1], samples[,2]), dim=c(rep('dim_1',m), rep('dim_2',m)) ), aes(x = ID, y = x)) + 
+  geom_line()+
+  ggtitle("Trace plot of both dimensions") +
+  facet_wrap(~dim)
+plot(g1)
+
 paste0("Mean of samples (",mean(samples[,1]),",",mean(samples[,2]),")")
+```
+
+
+
+```{r}
+B <- 0.05
+
+minus_logf <- function(x) {
+  -log(p_scenario4(c(x)))
+}
+
+minus_logf_grad <- function(x) {
+  a <- unname(as.matrix(df[, names(data_log_reg) != "y"]))
+  y <- df$y
+  paste0(length(x), nrow(t(a)))
+  reg <- t(x %*% t(a))
+  sigm <- 1/(1+exp(-reg))
+  return (c((t((y - sigm)) %*% a)))
+}
+
+## HMC
+L = 50
+epsilon = 0.0009
+current_q = c(2.05, -0.87, -0.5,  0.72, -0.09, -1.02, -0.82,  0.24, -0.61, -0.42,  0.47) #1.4 -0.6
+m = 1000
+
+#samples <- metropolis_hastings(p_scenario4, m, , 0.000005*diag(11), 11)
+
+
+samples <- hamiltonian_sampling(L, epsilon, current_q, m, minus_logf, minus_logf_grad, 11, FALSE)
+ess(samples)
+samples <- matrix(c(samples$Q1, samples$Q2), nrow=m)
+den3d <- kde2d(samples[,1], samples[,2])
+plot_ly(x=den3d$x, y=den3d$y, z=den3d$z) %>% add_surface()
+
+acf(samples, lag.max = 100)
+ess(samples)
+#m * (var(samples) / m) / (mcse(samples)$se)^2 # diy ESS: sample size times ratio of MC and MCMC error
+
+paste0(colMeans(samples))
 ```
 
 
