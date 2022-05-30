@@ -134,7 +134,7 @@ rejection_sampling <- function (f, g, g_sampler, M, m, n){
   
   samples <- matrix(vector('integer', 2*m), ncol = 2)
   for(i in 1:m){
-    print(paste("On sample", i))
+    #print(paste("On sample", i))
     repeat{
       y <- g_sampler(n) #2 is the dimension of bivariate
       u <- runif(1)
@@ -288,10 +288,10 @@ metropolis_hastings <- function(f, m, x0, cov, dimensions){
     new_x <- rmvnorm(1, prev_x, cov)
     alpha <- min(1, (f(c(new_x))*dmvnorm(new_x, prev_x, cov))/(f(c(prev_x))*dmvnorm(prev_x, new_x, cov)) )
     u <- runif(1)
-    if (is.nan(alpha)){
-      samples[i,]<-prev_x
-    }
-    else if (u<=alpha){
+    #if (is.nan(alpha)){
+    #  samples[i,]<-prev_x
+    #}
+    if (u<=alpha){
       samples[i,]<-new_x
     }
     else{
@@ -311,8 +311,8 @@ metropolis_hastings <- function(f, m, x0, cov, dimensions){
 n <- 2
 m <- 1000
 set.seed(134)
-samples <- metropolis_hastings(p_scenario1, m, c(1, 1), 2*diag(2), 2)
 
+samples <- metropolis_hastings(p_scenario1, m, c(1, 1), 2*diag(2), 2)
 #plot(samples)
 #persp(den3d, box=FALSE)
 den3d <- kde2d(samples[,1], samples[,2])
@@ -334,6 +334,33 @@ g1 <- ggplot( data.frame(ID = c(1:m,1:m), x = c(samples[,1], samples[,2]), dim=c
 plot(g1)
 
 paste0("Mean of samples", mean(samples[,1])," ", mean(samples[,2]) )
+```
+```{r}
+names <- c("chain1", "chain2", "chain3", "chain4", "chain5", "type","ID")
+
+df_chains <- data.frame(matrix(ncol = 7, nrow = m*2))
+colnames(df_chains) <- names
+df_chains$ID <- c(1:m,1:m)
+df_chains$type <- c(rep('dim_1',m), rep('dim_2',m))
+
+for (i in 1:5){
+  samples <- metropolis_hastings(p_scenario1, m, c(0, 0), 0.2*diag(2), 2)
+  df_chains[names[i]] <- c(samples[,1], samples[,2])
+  print(ess(samples))
+}
+
+plot(ggplot(df_chains, aes(ID)) +  
+    geom_line(aes(y = chain1, colour = "chain1")) +
+    geom_line(aes(y = chain2, colour = "chain2")) +
+    geom_line(aes(y = chain3, colour = "chain3")) +
+    geom_line(aes(y = chain4, colour = "chain4")) +
+    geom_line(aes(y = chain5, colour = "chain5")) +
+    labs(title="Traceplot for all 5 chains") +
+    facet_wrap(~type) +
+    scale_color_manual(name='',
+                     breaks=c('chain1', 'chain2', 'chain3', 'chain4', 'chain5'),
+                     values=c('chain1'='red','chain2'='blue', 'chain3'='green','chain4'='black', 'chain5'='orange'))
+    )
 ```
 
 
@@ -365,6 +392,34 @@ plot(g1)
 
 paste0("Mean of samples (",mean(samples[,1]),",",mean(samples[,2]),")")
 ```
+```{r}
+names <- c("chain1", "chain2", "chain3", "chain4", "chain5", "type","ID")
+
+df_chains <- data.frame(matrix(ncol = 7, nrow = m*2))
+colnames(df_chains) <- names
+df_chains$ID <- c(1:m,1:m)
+df_chains$type <- c(rep('dim_1',m), rep('dim_2',m))
+
+for (i in 1:5){
+  samples <- metropolis_hastings(p_scenario2, m, c(5.5, 4), matrix(c(2,0,0,1),nrow=2), 2)
+  df_chains[names[i]] <- c(samples[,1], samples[,2])
+  print(ess(samples))
+}
+
+plot(ggplot(df_chains, aes(ID)) +  
+    geom_line(aes(y = chain1, colour = "chain1")) +
+    geom_line(aes(y = chain2, colour = "chain2")) +
+    geom_line(aes(y = chain3, colour = "chain3")) +
+    geom_line(aes(y = chain4, colour = "chain4")) +
+    geom_line(aes(y = chain5, colour = "chain5")) +
+    labs(title="Traceplot for all 5 chains") +
+    facet_wrap(~type) +
+    scale_color_manual(name='',
+                     breaks=c('chain1', 'chain2', 'chain3', 'chain4', 'chain5'),
+                     values=c('chain1'='red','chain2'='blue', 'chain3'='green','chain4'='black', 'chain5'='orange'))
+    )
+```
+
 
 ```{r}
 n <- 2
@@ -391,6 +446,35 @@ plot(g1)
 
 paste0("Mean of samples (",mean(samples[,1]),",",mean(samples[,2]),")")
 ```
+
+```{r}
+names <- c("chain1", "chain2", "chain3", "chain4", "chain5", "type","ID")
+
+df_chains <- data.frame(matrix(ncol = 7, nrow = m*2))
+colnames(df_chains) <- names
+df_chains$ID <- c(1:m,1:m)
+df_chains$type <- c(rep('dim_1',m), rep('dim_2',m))
+
+for (i in 1:5){
+  samples <- metropolis_hastings(p_scenario3, m, c(1.4, -0.76), 0.01*diag(2), 2)
+  df_chains[names[i]] <- c(samples[,1], samples[,2])
+  print(ess(samples))
+}
+
+plot(ggplot(df_chains, aes(ID)) +  
+    geom_line(aes(y = chain1, colour = "chain1")) +
+    geom_line(aes(y = chain2, colour = "chain2")) +
+    geom_line(aes(y = chain3, colour = "chain3")) +
+    geom_line(aes(y = chain4, colour = "chain4")) +
+    geom_line(aes(y = chain5, colour = "chain5")) +
+    labs(title="Traceplot for all 5 chains") +
+    facet_wrap(~type) +
+    scale_color_manual(name='',
+                     breaks=c('chain1', 'chain2', 'chain3', 'chain4', 'chain5'),
+                     values=c('chain1'='red','chain2'='blue', 'chain3'='green','chain4'='black', 'chain5'='orange'))
+    )
+```
+
 
 
 ```{r}
@@ -542,7 +626,7 @@ epsilon = 0.5
 current_q = c(0.5,1)
 m = 1000
 
-samples <- hamiltonian_sampling(L, epsilon, current_q, m, minus_logf, minus_logf_grad)
+samples <- hamiltonian_sampling(L, epsilon, current_q, m, minus_logf, minus_logf_grad, dim=2, visualize=FALSE)
 samples <- matrix(c(samples$Q1, samples$Q2), nrow=m)
 ## HMC
 
@@ -565,6 +649,37 @@ plot(g1)
 
 paste0("Mean of samples (",mean(samples[,1]),",",mean(samples[,2]),")")
 ```
+
+```{r}
+names <- c("chain1", "chain2", "chain3", "chain4", "chain5", "type","ID")
+
+df_chains <- data.frame(matrix(ncol = 7, nrow = m*2))
+colnames(df_chains) <- names
+df_chains$ID <- c(1:m,1:m)
+df_chains$type <- c(rep('dim_1',m), rep('dim_2',m))
+
+for (i in 1:5){
+  samples <- hamiltonian_sampling(L, epsilon, current_q, m, minus_logf, minus_logf_grad, dim=2, visualize=FALSE)
+  samples <- matrix(c(samples$Q1, samples$Q2), nrow=m)
+  
+  df_chains[names[i]] <- c(samples[,1], samples[,2])
+  print(ess(samples))
+}
+
+plot(ggplot(df_chains, aes(ID)) +  
+    geom_line(aes(y = chain1, colour = "chain1")) +
+    geom_line(aes(y = chain2, colour = "chain2")) +
+    geom_line(aes(y = chain3, colour = "chain3")) +
+    geom_line(aes(y = chain4, colour = "chain4")) +
+    geom_line(aes(y = chain5, colour = "chain5")) +
+    labs(title="Traceplot for all 5 chains") +
+    facet_wrap(~type) +
+    scale_color_manual(name='',
+                     breaks=c('chain1', 'chain2', 'chain3', 'chain4', 'chain5'),
+                     values=c('chain1'='red','chain2'='blue', 'chain3'='green','chain4'='black', 'chain5'='orange'))
+    )
+```
+
 
 ### Scenario 2
 ```{r}
@@ -586,7 +701,7 @@ epsilon = 0.6
 current_q = c(0,0) #1.4, -0.76)
 m = 1000
 
-samples <- hamiltonian_sampling(L, epsilon, current_q, m, minus_logf, minus_logf_grad)
+samples <- hamiltonian_sampling(L, epsilon, current_q, m, minus_logf, minus_logf_grad, dim=2, visualize=FALSE)
 samples <- matrix(c(samples$Q1, samples$Q2), nrow=m)
 
 den3d <- kde2d(samples[,1], samples[,2])
@@ -609,6 +724,37 @@ plot(g1)
 
 paste0("Mean of samples (",mean(samples[,1]),",",mean(samples[,2]),")")
 ```
+```{r}
+names <- c("chain1", "chain2", "chain3", "chain4", "chain5", "type","ID")
+
+df_chains <- data.frame(matrix(ncol = 7, nrow = m*2))
+colnames(df_chains) <- names
+df_chains$ID <- c(1:m,1:m)
+df_chains$type <- c(rep('dim_1',m), rep('dim_2',m))
+L = 4
+for (i in 1:5){
+  samples <- hamiltonian_sampling(L, epsilon, current_q, m, minus_logf, minus_logf_grad, dim=2, visualize=FALSE)
+  samples <- matrix(c(samples$Q1, samples$Q2), nrow=m)
+
+  df_chains[names[i]] <- c(samples[,1], samples[,2])
+  print(ess(samples))
+}
+
+plot(ggplot(df_chains, aes(ID)) +  
+    geom_line(aes(y = chain1, colour = "chain1")) +
+    geom_line(aes(y = chain2, colour = "chain2")) +
+    geom_line(aes(y = chain3, colour = "chain3")) +
+    geom_line(aes(y = chain4, colour = "chain4")) +
+    geom_line(aes(y = chain5, colour = "chain5")) +
+    labs(title="Traceplot for all 5 chains") +
+    facet_wrap(~type) +
+    scale_color_manual(name='',
+                     breaks=c('chain1', 'chain2', 'chain3', 'chain4', 'chain5'),
+                     values=c('chain1'='red','chain2'='blue', 'chain3'='green','chain4'='black', 'chain5'='orange'))
+    )
+```
+
+
 ## Scenario 3
 
 ```{r}
@@ -651,12 +797,12 @@ minus_log_log_reg2_der <- function(x) {
 }
 
 ## HMC
-L = 70
+L = 60
 epsilon = 0.001
 current_q = c(1.4,-0.58) #1.4 -0.6
 m = 1000
 
-samples <- hamiltonian_sampling(L, epsilon, current_q, m, minus_logf, minus_log_log_reg2_der)
+samples <- hamiltonian_sampling(L, epsilon, current_q, m, minus_logf, minus_log_log_reg2_der, dim=2, visualize=FALSE)
 samples <- matrix(c(samples$Q1, samples$Q2), nrow=m)
 den3d <- kde2d(samples[,1], samples[,2])
 plot_ly(x=den3d$x, y=den3d$y, z=den3d$z) %>% add_surface()
@@ -678,6 +824,41 @@ paste0("Mean of samples (",mean(samples[,1]),",",mean(samples[,2]),")")
 ```
 
 
+```{r}
+names <- c("chain1", "chain2", "chain3", "chain4", "chain5", "type","ID")
+
+df_chains <- data.frame(matrix(ncol = 7, nrow = m*2))
+colnames(df_chains) <- names
+df_chains$ID <- c(1:m,1:m)
+df_chains$type <- c(rep('dim_1',m), rep('dim_2',m))
+
+L = 70
+epsilon = 0.001
+current_q = c(1.4,-0.58) #1.4 -0.6
+m = 1000
+for (i in 1:5){
+  samples <- hamiltonian_sampling(L, epsilon, current_q, m, minus_logf, minus_log_log_reg2_der, dim=2, visualize=FALSE)
+  samples <- matrix(c(samples$Q1, samples$Q2), nrow=m)
+
+  df_chains[names[i]] <- c(samples[,1], samples[,2])
+  print(ess(samples))
+}
+
+plot(ggplot(df_chains, aes(ID)) +  
+    geom_line(aes(y = chain1, colour = "chain1")) +
+    geom_line(aes(y = chain2, colour = "chain2")) +
+    geom_line(aes(y = chain3, colour = "chain3")) +
+    geom_line(aes(y = chain4, colour = "chain4")) +
+    geom_line(aes(y = chain5, colour = "chain5")) +
+    labs(title="Traceplot for all 5 chains") +
+    facet_wrap(~type) +
+    scale_color_manual(name='',
+                     breaks=c('chain1', 'chain2', 'chain3', 'chain4', 'chain5'),
+                     values=c('chain1'='red','chain2'='blue', 'chain3'='green','chain4'='black', 'chain5'='orange'))
+    )
+```
+
+
 
 ```{r}
 B <- 0.05
@@ -687,7 +868,7 @@ minus_logf <- function(x) {
 }
 
 minus_logf_grad <- function(x) {
-  a <- unname(as.matrix(df[, names(data_log_reg) != "y"]))
+  a <- unname(as.matrix(df[, names(df) != "y"]))
   y <- df$y
   paste0(length(x), nrow(t(a)))
   reg <- t(x %*% t(a))
